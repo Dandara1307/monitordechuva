@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Monitoramento de Chuvas em Tempo Real">
+    <title>Monitoramento de Chuvas em Tempo Real</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; }
+        body { background-color: #fff; color: #000; }
+        footer { text-align: center; padding: 20px; }
+        .weather-marker { text-align: center; }
+        .weather-marker img { width: 30px; height: 30px; }
+        .weather-marker span { display: block; font-size: 14px; font-weight: bold; }
+        .title { font-size: 36px; font-weight: bold; color: #fff; }
+        .legend { font-size: 14px; color: #fff; margin-top: 10px; }
+        .legend span { margin-right: 15px; }
+        .legend div { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="text/babel">
+        const API_KEY = '1d7a56c2925d1b6e7b2e08180d521d95'; // Sua chave da API OpenWeather
+
+        // Lista completa de cidades e seus estados
+        const locations = [
+            { name: 'São Paulo', state: 'SP', position: [-23.5505, -46.6333] },
+            { name: 'Rio de Janeiro', state: 'RJ', position: [-22.9068, -43.1729] },
+            { name: 'Brasília', state: 'DF', position: [-15.7801, -47.9292] },
+            { name: 'Manaus', state: 'AM', position: [-3.1190, -60.2126] },
+            { name: 'Salvador', state: 'BA', position: [-12.9714, -38.5014] },
+            { name: 'Fortaleza', state: 'CE', position: [-3.7172, -38.5437] },
+            { name: 'Curitiba', state: 'PR', position: [-25.4296, -49.2719] },
+            { name: 'Recife', state: 'PE', position: [-8.0476, -34.8770] },
+            { name: 'Porto Alegre', state: 'RS', position: [-30.0346, -51.2177] },
+            { name: 'Belém', state: 'PA', position: [-1.4558, -48.4902] },
+            { name: 'Belo Horizonte', state: 'MG', position: [-19.9191, -43.9384] },
+            { name: 'Goiânia', state: 'GO', position: [-16.6864, -49.2643] },
+            { name: 'São Luís', state: 'MA', position: [-2.5391, -44.2820] },
+            { name: 'Maceió', state: 'AL', position: [-9.6659, -35.7350] },
+            { name: 'Natal', state: 'RN', position: [-5.7945, -35.2110] },
+            { name: 'Teresina', state: 'PI', position: [-5.0892, -42.8016] },
+            { name: 'João Pessoa', state: 'PB', position: [-7.1150, -34.8641] },
+            { name: 'Aracaju', state: 'SE', position: [-10.9472, -37.0731] },
+            { name: 'Campo Grande', state: 'MS', position: [-20.4420, -54.6464] },
+            { name: 'Cuiabá', state: 'MT', position: [-15.6010, -56.0978] },
+            { name: 'Palmas', state: 'TO', position: [-10.3320, -48.2043] },
+            { name: 'Rio Branco', state: 'AC', position: [-9.9749, -67.8243] },
+            { name: 'Macapá', state: 'AP', position: [-0.0382, -51.0694] },
+            { name: 'Boa Vista', state: 'RR', position: [2.8234, -60.6758] },
+            { name: 'Porto Velho', state: 'RO', position: [-8.7613, -63.8999] },
+            { name: 'Florianópolis', state: 'SC', position: [-27.5954, -48.5480] },
+            { name: 'Vitória', state: 'ES', position: [-20.3155, -40.3128] },
+            { name: 'São José', state: 'SC', position: [-27.5954, -48.5480] },
+            { name: 'Duque de Caxias', state: 'RJ', position: [-22.7855, -43.3083] },
+            { name: 'Nova Iguaçu', state: 'RJ', position: [-22.7430, -43.4600] },
+            { name: 'São Gonçalo', state: 'RJ', position: [-22.8260, -42.9799] },
+            { name: 'Canoas', state: 'RS', position: [-29.9994, -51.1832] },
+            { name: 'São Bernardo do Campo', state: 'SP', position: [-23.6939, -46.5652] },
+            { name: 'Osasco', state: 'SP', position: [-23.5329, -46.7919] },
+            { name: 'Santo André', state: 'SP', position: [-23.6632, -46.5383] },
+            { name: 'Diadema', state: 'SP', position: [-23.6854, -46.6050] },
+            { name: 'Jaboatão dos Guararapes', state: 'PE', position: [-8.1160, -35.0140] },
+            { name: 'Contagem', state: 'MG', position: [-20.2403, -44.0520] },
+            { name: 'Betim', state: 'MG', position: [-20.0150, -44.1980] },
+            { name: 'Londrina', state: 'PR', position: [-23.3042, -51.1625] },
+            { name: 'Maringá', state: 'PR', position: [-23.4200, -51.9333] },
+            { name: 'Niterói', state: 'RJ', position: [-22.8833, -43.1033] },
+            { name: 'Caxias do Sul', state: 'RS', position: [-29.1680, -51.1790] },
+            { name: 'Petrópolis', state: 'RJ', position: [-22.5050, -43.1720] },
+            { name: 'Juiz de Fora', state: 'MG', position: [-21.7655, -43.3500] },
+            { name: 'Uberlândia', state: 'MG', position: [-18.9183, -48.2750] },
+            { name: 'Campinas', state: 'SP', position: [-22.9056, -47.0608] },
+            { name: 'Sorocaba', state: 'SP', position: [-23.5010, -47.4580] },
+            { name: 'Ribeirão Preto', state: 'SP', position: [-21.1720, -47.8100] },
+            { name: 'São Carlos', state: 'SP', position: [-22.0050, -47.8970] },
+            { name: 'Bauru', state: 'SP', position: [-22.3140, -49.0580] },
+            { name: 'São José dos Campos', state: 'SP', position: [-23.2237, -45.9009] },
+            { name: 'Itajaí', state: 'SC', position: [-26.9060, -48.6660] },
+            { name: 'Joinville', state: 'SC', position: [-26.3044, -48.8450] },
+            { name: 'Blumenau', state: 'SC', position: [-26.9150, -49.0670] },
+            { name: 'Cascavel', state: 'PR', position: [-24.9550, -53.4580] },
+            { name: 'Ponta Grossa', state: 'PR', position: [-25.0990, -50.1700] },
+            { name: 'Marília', state: 'SP', position: [-22.2180, -50.8500] },
+            { name: 'Franca', state: 'SP', position: [-20.5930, -47.5290] },
+            { name: 'Barueri', state: 'SP', position: [-23.5000, -46.8840] },
+            { name: 'Itapevi', state: 'SP', position: [-23.5320, -47.0200] },
+            { name: 'Guarulhos', state: 'SP', position: [-23.4620, -46.5330] },
+            { name: 'São Vicente', state: 'SP', position: [-23.9660, -46.3840] },
+            { name: 'Praia Grande', state: 'SP', position: [-24.0070, -46.3940] },
+            { name: 'Santos', state: 'SP', position: [-23.9530, -46.3280] },
+            { name: 'Belo Horizonte', state: 'MG', position: [-19.9191, -43.9384] },
+            { name: 'Uberaba', state: 'MG', position: [-19.7470, -47.9330] },
+            { name: 'Governador Valadares', state: 'MG', position: [-18.8710, -41.9490] },
+            { name: 'Teófilo Otoni', state: 'MG', position: [-17.8580, -41.5080] },
+            { name: 'Divinópolis', state: 'MG', position: [-20.1460, -44.8880] },
+            { name: 'Sete Lagoas', state: 'MG', position: [-19.4550, -44.2470] },
+            { name: 'Santa Luzia', state: 'MG', position: [-19.7490, -43.8530] },
+            { name: 'Contagem', state: 'MG', position: [-20.2403, -44.0520] },
+            { name: 'Betim', state: 'MG', position: [-20.0150, -44.1980] },
+            { name: 'Ipatinga', state: 'MG', position: [-19.4690, -42.5320] },
+            { name: 'Barbacena', state: 'MG', position: [-21.2240, -43.7730] },
+            { name: 'Lavras', state: 'MG', position: [-21.2240, -45.0000] },            { name: 'Pouso Alegre', state: 'MG', position: [-22.2270, -45.7110] },
+            { name: 'Varginha', state: 'MG', position: [-21.5550, -45.4330] },
+            { name: 'Caxambu', state: 'MG', position: [-22.4050, -44.9340] },
+            { name: 'São João del-Rei', state: 'MG', position: [-21.1340, -44.2580] },
+            { name: 'Formiga', state: 'MG', position: [-20.4630, -45.4270] },
+            { name: 'Cabo Frio', state: 'RJ', position: [-22.9010, -42.0280] },
+            { name: 'Araruama', state: 'RJ', position: [-22.8660, -42.3350] },
+            { name: 'Rio das Ostras', state: 'RJ', position: [-22.5160, -41.9430] },
+            { name: 'Macéio', state: 'AL', position: [-9.6659, -35.7350] },
+            { name: 'Palmas', state: 'TO', position: [-10.3320, -48.2043] },
+            { name: 'Teresina', state: 'PI', position: [-5.0892, -42.8016] },
+            { name: 'São Luís', state: 'MA', position: [-2.5391, -44.2820] },
+            { name: 'Natal', state: 'RN', position: [-5.7945, -35.2110] },
+            { name: 'João Pessoa', state: 'PB', position: [-7.1150, -34.8641] },
+            { name: 'Aracaju', state: 'SE', position: [-10.9472, -37.0731] },
+            { name: 'Cuiabá', state: 'MT', position: [-15.6010, -56.0978] },
+            { name: 'Campo Grande', state: 'MS', position: [-20.4420, -54.6464] },
+            { name: 'Rio Branco', state: 'AC', position: [-9.9749, -67.8243] },
+            { name: 'Macapá', state: 'AP', position: [-0.0382, -51.0694] },
+            { name: 'Boa Vista', state: 'RR', position: [2.8234, -60.6758] },
+            { name: 'Porto Velho', state: 'RO', position: [-8.7613, -63.8999] },
+            { name: 'Florianópolis', state: 'SC', position: [-27.5954, -48.5480] },
+            { name: 'Vitória', state: 'ES', position: [-20.3155, -40.3128] },
+            { name: 'Joinville', state: 'SC', position: [-26.3044, -48.8450] },
+            { name: 'Blumenau', state: 'SC', position: [-26.9150, -49.0670] },
+            { name: 'Cascavel', state: 'PR', position: [-24.9550, -53.4580] },
+            { name: 'Ponta Grossa', state: 'PR', position: [-25.0990, -50.1700] },
+            { name: 'Marília', state: 'SP', position: [-22.2180, -50.8500] },
+            { name: 'Franca', state: 'SP', position: [-20.5930, -47.5290] },
+            { name: 'Barueri', state: 'SP', position: [-23.5000, -46.8840] },
+            { name: 'Itapevi', state: 'SP', position: [-23.5320, -47.0200] },
+            { name: 'Guarulhos', state: 'SP', position: [-23.4620, -46.5330] },
+            { name: 'São Vicente', state: 'SP', position: [-23.9660, -46.3840] },
+            { name: 'Praia Grande', state: 'SP', position: [-24.0070, -46.3940] },
+            { name: 'Santos', state: 'SP', position: [-23.9530, -46.3280] },
+            // Adicione mais cidades conforme necessário
+        ];
+
+        function Header() {
+            return (
+                <header className="bg-red-600 text-white p-4">
+                    <h1 className="title">Monitoramento de Chuvas em Tempo Real</h1>
+                    <div className="legend">
+                        <div><span style={{backgroundColor: 'red', borderRadius: '50%', width: '10px', height: '10px', display: 'inline-block'}}></span> Temporal</div>
+                        <div><span style={{backgroundColor: 'yellow', borderRadius: '50%', width: '10px', height: '10px', display: 'inline-block'}}></span> Sol</div>
+                        <div><span style={{backgroundColor: 'orange', borderRadius: '50%', width: '10px', height: '10px', display: 'inline-block'}}></span> Chuva</div>
+                    </div>
+                </header>
+            );
+        }
+
+        function Footer() {
+            return (
+                <footer className="bg-red-600 text-white p-4">
+                    <p>Direitos autorais Dandara Silva 2025</p>
+                </footer>
+            );
+        }
+
+        function WeatherMap() {
+            const mapRef = React.useRef(null);
+            const [mapInstance, setMapInstance] = React.useState(null);
+            const markersRef = React.useRef([]);
+
+            React.useEffect(() => {
+                if (!mapRef.current) return;
+
+                const map = L.map(mapRef.current).setView([-14.2350, -51.9253], 4); // Centralizado no Brasil
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                setMapInstance(map);
+
+                return () => map.remove();
+            }, []);
+
+            const getWeatherIcon = (weatherCode) => {
+                // Ícones baseados nas condições meteorológicas
+                if (weatherCode === 'Thunderstorm') {
+                    return 'https://openweathermap.org/img/wn/11d.png'; // Ícone para temporal
+                } else if (weatherCode === 'Rain') {
+                    return 'https://openweathermap.org/img/wn/09d.png'; // Ícone para chuva
+                } else if (weatherCode === 'Clear') {
+                    return 'https://openweathermap.org/img/wn/01d.png'; // Ícone para sol
+                } else {
+                    return 'https://openweathermap.org/img/wn/01d.png'; // Default (sol)
+                }
+            };
+
+            const updateWeatherData = async () => {
+                if (!mapInstance) return;
+
+                markersRef.current.forEach(marker => marker.remove());
+                markersRef.current = [];
+
+                try {
+                    for (const loc of locations) {
+                        const response = await fetch(
+                            `https://api.openweathermap.org/data/2.5/weather?q=${loc.name},BR&units=metric&appid=${API_KEY}`
+                        );
+                        const data = await response.json();
+
+                        const iconUrl = getWeatherIcon(data.weather[0].main); // Obtém o ícone com base no clima
+                        const icon = L.divIcon({
+                            className: 'custom-icon',
+                            html: `<div class="weather-marker">
+                                   <span style="background-color: ${data.weather[0].main === 'Thunderstorm' ? 'red' : data.weather[0].main === 'Rain' ? 'orange' : 'yellow'}; 
+                                          border-radius: 50%; width: 15px; height: 15px; display: inline-block;"></span>
+                                   <span>${Math.round(data.main.temp)}°C</span>
+                                   </div>`
+                        });
+
+                        const marker = L.marker(loc.position, { icon })
+                            .addTo(mapInstance)
+                            .bindPopup(`
+                                <strong>${loc.name}, ${loc.state}</strong><br>
+                                Condição: ${data.weather[0].description}<br>
+                                Temperatura: ${Math.round(data.main.temp)}°C
+                            `);
+                        
+                        marker.on('mouseover', function() {
+                            marker.bindPopup(`
+                                <strong>${loc.name}, ${loc.state}</strong><br>
+                                Condição: ${data.weather[0].description}<br>
+                                Temperatura: ${Math.round(data.main.temp)}°C
+                            `).openPopup();
+                        });
+
+                        markersRef.current.push(marker);
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar dados:', error);
+                }
+            };
+
+            React.useEffect(() => {
+                if (!mapInstance) return;
+
+                const interval = setInterval(updateWeatherData, 60000); // Atualiza os dados a cada 60 segundos
+                updateWeatherData(); // Chama imediatamente na inicialização
+
+                return () => clearInterval(interval);
+            }, [mapInstance]);
+
+            return <div ref={mapRef} id="map"></div>;
+        }
+
+        function App() {
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <Header />
+                    <main className="flex-1 p-8 bg-gray-100">
+                        <WeatherMap />
+                    </main>
+                    <Footer />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+          
